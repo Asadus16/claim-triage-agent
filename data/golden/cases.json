@@ -1,0 +1,122 @@
+[
+  {
+    "name": "clean small collision - straight through pay",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision", "theft", "glass", "fire", "hail", "vandalism"], "coverage_types": ["collision", "comprehensive", "glass"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-001", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 2000, "repair_estimate": 2000, "description": "rear end collision at an intersection, front bumper damaged", "documents": [{"kind": "estimate"}, {"kind": "photo"}]},
+    "expect": {"recommendation": "pay", "stp_eligible": true, "payout": 1500.0, "fraud_band": "low"}
+  },
+  {
+    "name": "clean collision above STP threshold - pay with human",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision", "theft", "glass"], "coverage_types": ["collision", "comprehensive", "glass"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-002", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 8000, "repair_estimate": 8000, "description": "side impact collision, driver door and quarter panel damaged", "documents": [{"kind": "estimate"}, {"kind": "photo"}]},
+    "expect": {"recommendation": "pay", "stp_eligible": false, "payout": 7500.0, "fraud_band": "low"}
+  },
+  {
+    "name": "theft missing police report - deny",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision", "theft"], "coverage_types": ["collision", "comprehensive"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-003", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-04", "peril": "theft", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 12000, "description": "vehicle stolen from a parking garage overnight", "documents": [{"kind": "photo"}]},
+    "expect": {"recommendation": "deny", "must_include_reason_codes": ["MISSING_POLICE_REPORT"]}
+  },
+  {
+    "name": "premium lapsed - deny",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000, "premium_lapsed": true},
+    "claim": {"claim_id": "CLM-004", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 2000, "repair_estimate": 2000, "description": "collision with a guardrail on the highway", "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "deny", "must_include_reason_codes": ["PREMIUM_LAPSED"]}
+  },
+  {
+    "name": "peril not covered - deny",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision", "theft"], "coverage_types": ["collision", "comprehensive"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-005", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "fire", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 9000, "description": "engine fire while parked, extensive damage to the front end", "documents": [{"kind": "photo"}]},
+    "expect": {"recommendation": "deny", "must_include_reason_codes": ["PERIL_NOT_COVERED"]}
+  },
+  {
+    "name": "flood without endorsement - deny",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision", "flood"], "coverage_types": ["collision", "comprehensive"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-006", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "flood", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 15000, "description": "vehicle submerged in a flash flood, water reached the dashboard", "documents": [{"kind": "photo"}]},
+    "expect": {"recommendation": "deny", "must_include_reason_codes": ["EXCL_FLOOD"], "must_not_include_reason_codes": ["PERIL_NOT_COVERED"]}
+  },
+  {
+    "name": "loss before inception - deny",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-007", "policy_number": "P1", "loss_date": "2025-12-01", "reported_date": "2026-01-05", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 3000, "repair_estimate": 3000, "description": "collision that allegedly occurred before the policy started", "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "deny", "must_include_reason_codes": ["LOSS_BEFORE_INCEPTION", "COVERAGE_NOT_ACTIVE"]}
+  },
+  {
+    "name": "loss after cancellation - deny",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000, "cancelled_date": "2026-05-01"},
+    "claim": {"claim_id": "CLM-008", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 3000, "repair_estimate": 3000, "description": "collision reported after the policy had been cancelled", "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "deny", "must_include_reason_codes": ["LOSS_AFTER_CANCELLATION"]}
+  },
+  {
+    "name": "driving under influence - deny",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-009", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-02", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 6000, "repair_estimate": 6000, "description": "single vehicle collision, police cited impaired driving", "driver_under_influence": true, "documents": [{"kind": "estimate"}, {"kind": "police_report"}]},
+    "expect": {"recommendation": "deny", "must_include_reason_codes": ["EXCL_DUI"]}
+  },
+  {
+    "name": "business use exclusion - deny",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000, "exclusions": ["business_use"]},
+    "claim": {"claim_id": "CLM-010", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 4000, "repair_estimate": 4000, "description": "collision while making commercial deliveries for a business", "business_use": true, "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "deny", "must_include_reason_codes": ["EXCL_BUSINESS_USE"]}
+  },
+  {
+    "name": "high fraud score - investigate",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000, "inception_history_months": 2},
+    "claim": {"claim_id": "CLM-011", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 9000, "repair_estimate": 9000, "description": "collision reported shortly after the policy began", "attorney_retained_before_contact": true, "statement_contradiction": true, "documents": [{"kind": "estimate", "font_anomaly": true}]},
+    "expect": {"recommendation": "investigate", "fraud_band": "high", "must_include_reason_codes": ["FRAUD_HIGH"]}
+  },
+  {
+    "name": "medium fraud score - pay with review",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-012", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-07-16", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 3000, "repair_estimate": 3000, "description": "collision reported six weeks after the incident", "prior_claims_other_carriers": 3, "address_changed_lt_6mo": true, "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "pay", "fraud_band": "medium", "stp_eligible": false, "payout": 2500.0}
+  },
+  {
+    "name": "low extraction confidence - refer",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-013", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 2000, "repair_estimate": 2000, "description": "handwritten claim, several fields were hard to read", "extraction_confidence": 0.4, "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "refer"}
+  },
+  {
+    "name": "over per occurrence limit - pay capped",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-014", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 30000, "repair_estimate": 30000, "description": "major collision, vehicle nearly a total loss", "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "pay", "stp_eligible": false, "payout": 24500.0, "must_include_reason_codes": ["OVER_OCCURRENCE_LIMIT"]}
+  },
+  {
+    "name": "glass sublimit applied - pay capped",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["glass"], "coverage_types": ["glass"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000, "sublimits": {"glass": 1000}},
+    "claim": {"claim_id": "CLM-015", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "glass", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 1500, "repair_estimate": 1500, "description": "windshield cracked by road debris on the freeway", "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "pay", "payout": 500.0, "must_include_reason_codes": ["SUBLIMIT_APPLIES"]}
+  },
+  {
+    "name": "coinsurance applied - payout math",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000, "coinsurance": 0.2},
+    "claim": {"claim_id": "CLM-016", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 5000, "repair_estimate": 5000, "description": "collision with another vehicle at a stop sign", "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "pay", "stp_eligible": false, "payout": 3600.0}
+  },
+  {
+    "name": "aggregate exhausted - deny",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000, "aggregate_used": 50000},
+    "claim": {"claim_id": "CLM-017", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 4000, "repair_estimate": 4000, "description": "collision after the annual aggregate had been used up", "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "deny", "must_include_reason_codes": ["AGGREGATE_EXHAUSTED"]}
+  },
+  {
+    "name": "unlisted driver - deny",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000, "listed_drivers": ["Maria Lopez"]},
+    "claim": {"claim_id": "CLM-018", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-03", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "John Doe", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 4000, "repair_estimate": 4000, "description": "collision while an unlisted driver was operating the vehicle", "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "deny", "must_include_reason_codes": ["DRIVER_NOT_LISTED"]}
+  },
+  {
+    "name": "clean theft with full documents - straight through pay",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["theft"], "coverage_types": ["comprehensive"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-019", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-06-02", "peril": "theft", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 2000, "description": "catalytic converter stolen, reported to police same day", "documents": [{"kind": "police_report"}, {"kind": "proof_of_ownership"}, {"kind": "photo"}]},
+    "expect": {"recommendation": "pay", "stp_eligible": true, "payout": 1500.0, "fraud_band": "low"}
+  },
+  {
+    "name": "late notice only - pay not straight through",
+    "policy": {"policy_number": "P1", "insured_name": "Maria Lopez", "effective_date": "2026-01-01", "expiration_date": "2027-01-01", "territory": ["CA"], "covered_perils": ["collision"], "coverage_types": ["collision"], "deductible": 500, "per_occurrence_limit": 25000, "aggregate_limit": 50000},
+    "claim": {"claim_id": "CLM-020", "policy_number": "P1", "loss_date": "2026-06-01", "reported_date": "2026-08-30", "peril": "collision", "claimant_name": "Maria Lopez", "driver_name": "Maria Lopez", "vehicle_id": "VIN1", "loss_location": "CA", "claimed_amount": 1000, "repair_estimate": 1000, "description": "minor collision reported nearly three months later", "documents": [{"kind": "estimate"}]},
+    "expect": {"recommendation": "pay", "stp_eligible": false, "payout": 500.0, "must_include_reason_codes": ["LATE_NOTICE"]}
+  }
+]

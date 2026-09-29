@@ -1,0 +1,945 @@
+{
+  "name": "Insurance Claim Triage (hybrid)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "claim-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "62a303de-1eff-408b-b6df-2356ec1b44dd",
+      "name": "Claim Intake (Webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        300
+      ],
+      "webhookId": "claim-intake"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $json.body || {};\nconst missing = ['claim_id','policy','loss_date','reported_date','claim_text']\n  .filter(k => b[k] === undefined);\nreturn [{ json: { ...b, valid: missing.length === 0, missing,\n  claim_ref: 'CR-' + (b.claim_id || 'unknown') } }];"
+      },
+      "id": "c1999f94-3200-4057-b0ba-0b8f5868d3f6",
+      "name": "Validate + idempotency key",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "78193fc6-38e1-4179-bd75-8dcba89654d4",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0",
+              "name": "error",
+              "value": "invalid_request",
+              "type": "string"
+            },
+            {
+              "id": "a1",
+              "name": "missing",
+              "value": "={{ $json.missing }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "16b9ff89-d78e-4b6e-b8d5-d599f69b4461",
+      "name": "Reject (400)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "46f11c39-f80b-49f6-a422-995c815235f5",
+      "name": "Respond: rejected",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8099/extract",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ claim_text: $json.claim_text }) }}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "demo-secret-key"
+            }
+          ]
+        }
+      },
+      "id": "0588e713-920f-4fed-bc23-5452c518ec00",
+      "name": "Extract facts (LLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const b = $('Validate + idempotency key').item.json;\nconst ex = $json;\nconst claim = {\n  claim_id: b.claim_id, policy_number: b.policy.policy_number,\n  loss_date: b.loss_date, reported_date: b.reported_date,\n  vehicle_id: b.vehicle_id, loss_location: b.loss_location || ex.loss_location,\n  peril: ex.peril, claimant_name: ex.claimant_name || b.policy.insured_name,\n  driver_name: ex.driver_name || ex.claimant_name,\n  claimed_amount: ex.claimed_amount, repair_estimate: ex.repair_estimate,\n  description: ex.description, driver_under_influence: ex.driver_under_influence,\n  business_use: ex.business_use, racing: ex.racing,\n  extraction_confidence: ex.extraction_confidence };\nreturn [{ json: { policy: b.policy, claim, narrate: true } }];"
+      },
+      "id": "b5eb1878-80cd-47e1-a353-f3d88990a09e",
+      "name": "Assemble claim record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8099/decide",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "demo-secret-key"
+            }
+          ]
+        }
+      },
+      "id": "578538e9-11e3-463c-a79e-5b35337d872b",
+      "name": "Rules engine + payout + fraud",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.recommendation }}",
+                    "rightValue": "pay",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "pay"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.recommendation }}",
+                    "rightValue": "investigate",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "investigate"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.recommendation }}",
+                    "rightValue": "deny",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "deny"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.recommendation }}",
+                    "rightValue": "refer",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "refer"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a06101aa-4384-4815-88bf-8b21c02715c5",
+      "name": "Route by recommendation",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        780,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.stp_eligible }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8be97c16-dce1-4369-820b-684711e03c91",
+      "name": "Straight-through eligible?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0",
+              "name": "status",
+              "value": "auto_approved",
+              "type": "string"
+            },
+            {
+              "id": "a1",
+              "name": "audit_id",
+              "value": "={{ $('Rules engine + payout + fraud').item.json.audit_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ea42beb9-fdd5-468f-bc51-918447cc59d3",
+      "name": "Auto-approve payment",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1300,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Adjuster approval",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "approve"
+                  },
+                  {
+                    "option": "override"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reviewer note",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "04a79e3c-3c9d-4d88-8e6c-8f70d611d33d",
+      "name": "Adjuster approval",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1300,
+        240
+      ],
+      "webhookId": "claim-adj"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0",
+              "name": "routed_to",
+              "value": "SIU",
+              "type": "string"
+            },
+            {
+              "id": "a1",
+              "name": "fraud_score",
+              "value": "={{ $json.fraud_score }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0aaf4524-fb74-4ae1-a207-2ba011aa1de1",
+      "name": "Flag to SIU queue",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "SIU review",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "clear"
+                  },
+                  {
+                    "option": "escalate"
+                  },
+                  {
+                    "option": "deny"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Investigator note",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b835bad9-7d67-483e-9697-3a38c453faee",
+      "name": "SIU review",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1300,
+        440
+      ],
+      "webhookId": "claim-siu"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a0",
+              "name": "letter_template",
+              "value": "denial_v1",
+              "type": "string"
+            },
+            {
+              "id": "a1",
+              "name": "reasons",
+              "value": "={{ $json.reason_codes }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1de723d6-6e47-490c-8d00-fda8861f3f92",
+      "name": "Draft denial letter",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1040,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Supervisor sign-off",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "approve"
+                  },
+                  {
+                    "option": "override"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Note",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "30f2642d-b4ba-410f-8b85-2939b880b9cc",
+      "name": "Supervisor sign-off",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1300,
+        640
+      ],
+      "webhookId": "claim-sup"
+    },
+    {
+      "parameters": {
+        "resume": "form",
+        "formTitle": "Manual review",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "approve"
+                  },
+                  {
+                    "option": "deny"
+                  },
+                  {
+                    "option": "escalate"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Note",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8cfbb415-3691-4193-834c-07728d39e073",
+      "name": "Manual review",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1300,
+        840
+      ],
+      "webhookId": "claim-man"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://localhost:8099/human/{{ $('Rules engine + payout + fraud').item.json.audit_id }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ action: ($json.Decision || $json.status || 'approve'), note: ($json['Reviewer note'] || $json['Note'] || $json['Investigator note'] || '') }) }}",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "demo-secret-key"
+            }
+          ]
+        }
+      },
+      "id": "b2f6c796-e35b-4586-b72a-da6aeab65ea0",
+      "name": "Record decision + audit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1620,
+        440
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b029ae94-267b-44c8-9dbb-5e9071ffda34",
+      "name": "Update claims system",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1880,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "f863b47f-c9af-42f9-96c0-29822234d64e",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2120,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Insurance Claim Triage  (hybrid: n8n + FastAPI)\nn8n orchestrates; the deterministic engine, guardrails and audit live in a FastAPI service. Numbers are never produced by the model.",
+        "width": 520,
+        "height": 150
+      },
+      "id": "82d44028-a0da-439e-a3bb-bc52e1cab199",
+      "name": "note-889f3b",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -740,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1 \u00b7 Intake & validation\nRequired fields checked, idempotency key built.",
+        "width": 420,
+        "height": 150
+      },
+      "id": "6acae864-5821-4cc0-a059-1a5adf82e1b8",
+      "name": "note-ce92f4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -740,
+        470
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2 \u00b7 AI extraction\nLLM extracts claim facts only (validated schema). It does not decide or compute.",
+        "width": 470,
+        "height": 130
+      },
+      "id": "4d30511c-82c5-4b89-ba71-971353b2002b",
+      "name": "note-fcc18f",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 3 \u00b7 Deterministic engine\n53 rules \u00b7 payout math \u00b7 SIU fraud score \u00b7 confidence. Returns a recommendation + reason codes.",
+        "width": 470,
+        "height": 130
+      },
+      "id": "a65f6613-cc9d-4b6a-939a-187350855667",
+      "name": "note-9431d1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 4 \u00b7 Route by outcome + human decides\nEach outcome has its own review path. A person approves, overrides or escalates.",
+        "width": 500,
+        "height": 120
+      },
+      "id": "52776ec8-87f1-4a9d-a1ac-fb45c58e02f0",
+      "name": "note-ad39d2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1020,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 5 \u00b7 Audit & downstream\nHuman decision recorded to the audit trail, then pushed downstream.",
+        "width": 460,
+        "height": 120
+      },
+      "id": "713f67e3-0f80-4998-9a80-512728cdcfd6",
+      "name": "note-99cb20",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Claim Intake (Webhook)": {
+      "main": [
+        [
+          {
+            "node": "Validate + idempotency key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate + idempotency key": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "Extract facts (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject (400)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject (400)": {
+      "main": [
+        [
+          {
+            "node": "Respond: rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract facts (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Assemble claim record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble claim record": {
+      "main": [
+        [
+          {
+            "node": "Rules engine + payout + fraud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rules engine + payout + fraud": {
+      "main": [
+        [
+          {
+            "node": "Route by recommendation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by recommendation": {
+      "main": [
+        [
+          {
+            "node": "Straight-through eligible?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Flag to SIU queue",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Draft denial letter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Manual review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Straight-through eligible?": {
+      "main": [
+        [
+          {
+            "node": "Auto-approve payment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Adjuster approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag to SIU queue": {
+      "main": [
+        [
+          {
+            "node": "SIU review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft denial letter": {
+      "main": [
+        [
+          {
+            "node": "Supervisor sign-off",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto-approve payment": {
+      "main": [
+        [
+          {
+            "node": "Record decision + audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adjuster approval": {
+      "main": [
+        [
+          {
+            "node": "Record decision + audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SIU review": {
+      "main": [
+        [
+          {
+            "node": "Record decision + audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supervisor sign-off": {
+      "main": [
+        [
+          {
+            "node": "Record decision + audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual review": {
+      "main": [
+        [
+          {
+            "node": "Record decision + audit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record decision + audit": {
+      "main": [
+        [
+          {
+            "node": "Update claims system",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update claims system": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
